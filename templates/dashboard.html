@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>错题管理系统 - 仪表盘</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    <link rel="stylesheet" href="/static/css/base.css" />
+    <link rel="stylesheet" href="/static/css/common.css" />
+  </head>
+  <body>
+    <div id="app" class="app-container">
+      <app-sidebar></app-sidebar>
+      <div class="main-content">
+        <app-header></app-header>
+        <app-dashboard>
+          <template slot="table-actions">
+            <el-button type="primary" icon="el-icon-plus" size="small">添加错题</el-button>
+          </template>
+        </app-dashboard>
+      </div>
+    </div>
+
+    <script src="./static/js/axios.min.js"></script>
+    <script src="./static/js/vue.js"></script>
+    <script src="./static/js/element-ui.js"></script>
+    <!-- ECharts 图表库，用于错题分布和趋势分析图 -->
+    <script src="./static/js/echarts.min.js"></script>
+    <script src="./static/js/request.js"></script>
+    <script src="./static/js/apis/dashboard.js"></script>
+    <script src="./static/js/apis/review.js"></script>
+    <script src="./static/js/components/common/sidebar.js"></script>
+    <script src="./static/js/components/common/header.js"></script>
+    <script src="./static/js/components/pages/dashboard.js"></script>
+
+    <script>
+      new Vue({ el: "#app" });
+    </script>
+  </body>
+</html>
