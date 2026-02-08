@@ -139,8 +139,25 @@ Vue.component('app-question-list', {
           </el-form-item>
           <el-form-item label="题目内容" prop="content">
             <el-input type="textarea" :rows="4" v-model="addForm.content" placeholder="请输入题目内容"></el-input>
+            <div style="margin-top: 8px;">
+              <el-upload
+                :action="''"
+                :auto-upload="false"
+                :on-change="(file, fileList) => handleErrorImageChange(file, fileList, 'content')"
+                :file-list="addForm.contentImageList"
+                :limit="3"
+                :on-preview="handleImagePreview"
+                :on-remove="(file, fileList) => handleErrorImageRemove(file, fileList, 'content')"
+                accept="image/*,.pdf,.doc,.docx"
+              >
+                <el-button size="small" type="primary" icon="el-icon-upload2">点击上传</el-button>
+                <div slot="tip" class="el-upload__tip">
+                  支持图片、PDF、Word文档，单个文件不超过10MB，最多3个
+                </div>
+              </el-upload>
+            </div>
           </el-form-item>
-          <el-form-item label="错误原因" prop="errorReason">
+          <el-form-item label="错误原因">
             <el-input type="textarea" :rows="3" v-model="addForm.errorReason" placeholder="请描述错误原因"></el-input>
             <div style="margin-top: 8px;">
               <el-upload
@@ -207,12 +224,6 @@ Vue.component('app-question-list', {
                 <span class="info-value">{{ questionDetail.title }}</span>
               </div>
               <div class="info-item">
-                <span class="info-label">科目：</span>
-                <el-tag :color="questionDetail.subject_color" style="color: #fff; border: none;" size="small">
-                  {{ questionDetail.subject_name }}
-                </el-tag>
-              </div>
-              <div class="info-item">
                 <span class="info-label">题目类型：</span>
                 <el-tag type="info" size="small">{{ getQuestionTypeLabel(questionDetail.question_type) }}</el-tag>
               </div>
@@ -267,7 +278,22 @@ Vue.component('app-question-list', {
             <div class="detail-header">
               <h3>题目内容</h3>
             </div>
-            <div class="detail-content-text">{{ questionDetail.content || questionDetail.title }}</div>
+            <div class="detail-content-text" v-if="questionDetail.content">{{ questionDetail.content }}</div>
+            <div class="detail-attachments" v-if="questionDetail.images && questionDetail.images.length > 0">
+              <div class="images-container">
+                <template v-for="(url, index) in questionDetail.images">
+                  <div v-if="isImageFile(url)" :key="'ci'+index" class="image-item" @click="previewDetailImage(url)">
+                    <img :src="url" :alt="'题目图片' + (index + 1)" />
+                  </div>
+                  <div v-else :key="'cd'+index" class="doc-item">
+                    <a :href="url" target="_blank" class="doc-link">
+                      <i :class="getFileIcon(url)"></i>
+                      <span>{{ getFileName(url) }}</span>
+                    </a>
+                  </div>
+                </template>
+              </div>
+            </div>
           </div>
 
           <!-- 正确答案 -->
@@ -275,7 +301,22 @@ Vue.component('app-question-list', {
             <div class="detail-header">
               <h3>正确答案</h3>
             </div>
-            <div class="detail-content-text answer-text">{{ questionDetail.answer }}</div>
+            <div class="detail-content-text answer-text" v-if="questionDetail.answer">{{ questionDetail.answer }}</div>
+            <div class="detail-attachments" v-if="questionDetail.answer_images && questionDetail.answer_images.length > 0">
+              <div class="images-container">
+                <template v-for="(url, index) in questionDetail.answer_images">
+                  <div v-if="isImageFile(url)" :key="'ai'+index" class="image-item" @click="previewDetailImage(url)">
+                    <img :src="url" :alt="'答案图片' + (index + 1)" />
+                  </div>
+                  <div v-else :key="'ad'+index" class="doc-item">
+                    <a :href="url" target="_blank" class="doc-link">
+                      <i :class="getFileIcon(url)"></i>
+                      <span>{{ getFileName(url) }}</span>
+                    </a>
+                  </div>
+                </template>
+              </div>
+            </div>
           </div>
 
           <!-- 错误原因 -->
@@ -283,22 +324,20 @@ Vue.component('app-question-list', {
             <div class="detail-header">
               <h3>错误原因</h3>
             </div>
-            <div class="detail-content-text error-text">{{ questionDetail.error_reason }}</div>
-          </div>
-
-          <!-- 错题图片 -->
-          <div class="detail-section" v-if="questionDetail.images && questionDetail.images.length > 0">
-            <div class="detail-header">
-              <h3>错题图片（{{ questionDetail.images.length }}张）</h3>
-            </div>
-            <div class="images-container">
-              <div 
-                v-for="(imageUrl, index) in questionDetail.images" 
-                :key="index"
-                class="image-item"
-                @click="previewDetailImage(imageUrl)"
-              >
-                <img :src="imageUrl" :alt="'错题图片' + (index + 1)" />
+            <div class="detail-content-text error-text" v-if="questionDetail.error_reason">{{ questionDetail.error_reason }}</div>
+            <div class="detail-attachments" v-if="questionDetail.error_images && questionDetail.error_images.length > 0">
+              <div class="images-container">
+                <template v-for="(url, index) in questionDetail.error_images">
+                  <div v-if="isImageFile(url)" :key="'ei'+index" class="image-item" @click="previewDetailImage(url)">
+                    <img :src="url" :alt="'错误原因图片' + (index + 1)" />
+                  </div>
+                  <div v-else :key="'ed'+index" class="doc-item">
+                    <a :href="url" target="_blank" class="doc-link">
+                      <i :class="getFileIcon(url)"></i>
+                      <span>{{ getFileName(url) }}</span>
+                    </a>
+                  </div>
+                </template>
               </div>
             </div>
           </div>
@@ -328,8 +367,10 @@ Vue.component('app-question-list', {
         answer: '',
         images: [],
         imageList: [],
+        contentImageList: [],
         errorImageList: [],
         answerImageList: [],
+        contentImages: [],
         errorImages: [],
         answerImages: []
       },
@@ -342,8 +383,20 @@ Vue.component('app-question-list', {
         title: [{ required: true, message: '请输入题目名称', trigger: 'blur' }],
         questionType: [{ required: true, message: '请选择题目类型', trigger: 'change' }],
         difficulty: [{ required: true, message: '请选择难度', trigger: 'change' }],
-        content: [{ required: true, message: '请输入题目内容', trigger: 'blur' }],
-        errorReason: [{ required: true, message: '请输入错误原因', trigger: 'blur' }]
+        content: [{ required: true, validator: (rule, value, callback) => {
+          if (!value && (!this.addForm.contentImages || this.addForm.contentImages.length === 0)) {
+            callback(new Error('请输入题目内容或上传图片/文档'));
+          } else {
+            callback();
+          }
+        }, trigger: 'blur' }],
+        answer: [{ required: true, validator: (rule, value, callback) => {
+          if (!value && (!this.addForm.answerImages || this.addForm.answerImages.length === 0)) {
+            callback(new Error('请输入正确答案或上传图片/文档'));
+          } else {
+            callback();
+          }
+        }, trigger: 'blur' }]
       },
       questionList: [],
       currentPage: 1,
@@ -522,7 +575,9 @@ Vue.component('app-question-list', {
         const index = fileList.findIndex(f => f.uid === file.uid);
         if (index > -1) {
           fileList.splice(index, 1);
-          if (type === 'error') {
+          if (type === 'content') {
+            this.addForm.contentImageList = fileList;
+          } else if (type === 'error') {
             this.addForm.errorImageList = fileList;
           } else {
             this.addForm.answerImageList = fileList;
@@ -533,7 +588,9 @@ Vue.component('app-question-list', {
       if (fileList.length > 3) {
         this.$message.error('最多只能上传 3 个文件');
         fileList.pop();
-        if (type === 'error') {
+        if (type === 'content') {
+          this.addForm.contentImageList = fileList;
+        } else if (type === 'error') {
           this.addForm.errorImageList = fileList;
         } else {
           this.addForm.answerImageList = fileList;
@@ -547,7 +604,13 @@ Vue.component('app-question-list', {
         const res = await window.uploadAPI.uploadGeneralFile(file.raw);
         if (res.code === 0 && res.data && res.data.url) {
           // 根据类型添加到对应的数组
-          if (type === 'error') {
+          if (type === 'content') {
+            if (!this.addForm.contentImages) {
+              this.addForm.contentImages = [];
+            }
+            this.addForm.contentImages.push(res.data.url);
+            this.addForm.contentImageList = fileList;
+          } else if (type === 'error') {
             if (!this.addForm.errorImages) {
               this.addForm.errorImages = [];
             }
@@ -574,7 +637,9 @@ Vue.component('app-question-list', {
           const index = fileList.findIndex(f => f.uid === file.uid);
           if (index > -1) {
             fileList.splice(index, 1);
-            if (type === 'error') {
+            if (type === 'content') {
+              this.addForm.contentImageList = fileList;
+            } else if (type === 'error') {
               this.addForm.errorImageList = fileList;
             } else {
               this.addForm.answerImageList = fileList;
@@ -586,7 +651,9 @@ Vue.component('app-question-list', {
         const index = fileList.findIndex(f => f.uid === file.uid);
         if (index > -1) {
           fileList.splice(index, 1);
-          if (type === 'error') {
+          if (type === 'content') {
+            this.addForm.contentImageList = fileList;
+          } else if (type === 'error') {
             this.addForm.errorImageList = fileList;
           } else {
             this.addForm.answerImageList = fileList;
@@ -596,7 +663,15 @@ Vue.component('app-question-list', {
     },
     handleErrorImageRemove(file, fileList, type) {
       const imageUrl = file.url || (file.response && file.response.data && file.response.data.url);
-      if (type === 'error') {
+      if (type === 'content') {
+        if (imageUrl && this.addForm.contentImages) {
+          const index = this.addForm.contentImages.indexOf(imageUrl);
+          if (index > -1) {
+            this.addForm.contentImages.splice(index, 1);
+          }
+        }
+        this.addForm.contentImageList = fileList;
+      } else if (type === 'error') {
         if (imageUrl && this.addForm.errorImages) {
           const index = this.addForm.errorImages.indexOf(imageUrl);
           if (index > -1) {
@@ -628,7 +703,7 @@ Vue.component('app-question-list', {
           error_reason: this.addForm.errorReason,
           answer: this.addForm.answer,
           question_type: this.addForm.questionType || 'single_choice',
-          images: this.addForm.images || [],
+          images: this.addForm.contentImages || [],
           error_images: this.addForm.errorImages || [],
           answer_images: this.addForm.answerImages || []
         };
@@ -656,6 +731,8 @@ Vue.component('app-question-list', {
       this.editingId = null;
       this.addForm.images = [];
       this.addForm.imageList = [];
+      this.addForm.contentImages = [];
+      this.addForm.contentImageList = [];
       this.addForm.errorImages = [];
       this.addForm.errorImageList = [];
       this.addForm.answerImages = [];
@@ -700,6 +777,26 @@ Vue.component('app-question-list', {
       this.previewImageUrl = imageUrl;
       this.imagePreviewVisible = true;
     },
+    isImageFile(url) {
+      if (!url) return false;
+      const ext = url.split('.').pop().toLowerCase().split('?')[0];
+      return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg'].includes(ext);
+    },
+    getFileIcon(url) {
+      if (!url) return 'el-icon-document';
+      const ext = url.split('.').pop().toLowerCase().split('?')[0];
+      if (ext === 'pdf') return 'el-icon-document';
+      if (['doc', 'docx'].includes(ext)) return 'el-icon-document';
+      return 'el-icon-document';
+    },
+    getFileName(url) {
+      if (!url) return '未知文件';
+      const parts = url.split('/');
+      const name = parts[parts.length - 1].split('?')[0];
+      const ext = name.split('.').pop().toLowerCase();
+      const extMap = { 'pdf': 'PDF文档', 'doc': 'Word文档', 'docx': 'Word文档' };
+      return extMap[ext] || name;
+    },
     editQuestionFromDetail() {
       if (this.questionDetail) {
         this.detailDialogVisible = false;
@@ -731,6 +828,13 @@ Vue.component('app-question-list', {
           imageList: images.map((url, index) => ({
             uid: index,
             name: `image_${index + 1}`,
+            url: url,
+            status: 'success'
+          })),
+          contentImages: images,
+          contentImageList: images.map((url, index) => ({
+            uid: index,
+            name: `content_image_${index + 1}`,
             url: url,
             status: 'success'
           })),
@@ -1028,6 +1132,34 @@ Vue.component('app-question-list', {
           background-color: #fed7d7;
           padding: 12px;
           border-radius: 6px;
+        }
+        .question-list-content .detail-attachments {
+          margin-top: 10px;
+        }
+        .question-list-content .doc-item {
+          display: inline-block;
+          margin-right: 12px;
+          margin-bottom: 8px;
+        }
+        .question-list-content .doc-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          padding: 8px 16px;
+          background: #f0f5ff;
+          border: 1px solid #d6e4ff;
+          border-radius: 6px;
+          color: #4299e1;
+          text-decoration: none;
+          font-size: 13px;
+          transition: all 0.2s;
+        }
+        .question-list-content .doc-link:hover {
+          background: #d6e4ff;
+          color: #2b6cb0;
+        }
+        .question-list-content .doc-link i {
+          font-size: 16px;
         }
         .question-list-content .images-container {
           display: grid;

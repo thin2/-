@@ -192,8 +192,13 @@ def get_question_detail(question_id: int):
 def create_question():
     """创建新错题记录。"""
     payload = request.get_json(silent=True) or {}
-    required_fields = ["title", "question_type", "difficulty", "content", "answer", "error_reason"]
+    required_fields = ["title", "question_type", "difficulty"]
     missing = [field for field in required_fields if not payload.get(field)]
+    # content/answer: 有对应图片时文字可以为空；error_reason完全可选
+    if not payload.get("content") and not payload.get("images"):
+        missing.append("content")
+    if not payload.get("answer") and not payload.get("answer_images"):
+        missing.append("answer")
     if missing:
         return Response.error(f"缺少必要参数：{', '.join(missing)}")
 

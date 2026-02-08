@@ -49,7 +49,7 @@ class Question(db.Model):
     title = db.Column(db.String(200), nullable=False)
     content = db.Column(db.Text)
     answer = db.Column(db.Text)
-    error_reason = db.Column(db.Text, nullable=False)
+    error_reason = db.Column(db.Text, nullable=True)
     difficulty = db.Column(db.Integer, nullable=False, default=2)
     review_status = db.Column(db.Integer, nullable=False, default=0)
     review_count = db.Column(db.Integer, nullable=False, default=0)
